@@ -11,8 +11,10 @@ namespace AssistAnt
     {
         private string SourceLanguage { get; set; }
         private string TargetLanguage { get; set; }
-        
+
         private Translator TranslatorAPI { get; set; }
+
+        private static Dictionary<string, string> Cache = new Dictionary<string, string>();
 
         private string LiteConvertLanguage(string language)
         {
@@ -39,13 +41,30 @@ namespace AssistAnt
 
         public string Translate(string text)
         {
-            Task<Translation> task = TranslatorAPI.TranslateAsync(
-                SourceLanguage,
-                TargetLanguage,
-                text
-                );
-            task.Wait();
-            return task.Result.TranslatedText;
+            try
+            {
+                var cacheKey = SourceLanguage + TargetLanguage + "|" + text;
+                if (Cache.TryGetValue(cacheKey, out var cacheVal))
+                {
+                    return cacheVal;
+                }
+
+                Task<Translation> task = TranslatorAPI.TranslateAsync(
+                    SourceLanguage,
+                    TargetLanguage,
+                    text
+                    );
+                task.Wait();
+                var val = task.Result.TranslatedText;
+
+                Cache[cacheKey] = val;
+
+                return val;
+            }
+            catch
+            {
+                return "";
+            }
         }
     }
 }

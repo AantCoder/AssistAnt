@@ -94,9 +94,9 @@ namespace AssistAnt
 
         #endregion
         private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button1;
+        public System.Windows.Forms.TextBox textBox1;
     }
 }
 
