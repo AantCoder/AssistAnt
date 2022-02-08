@@ -28,17 +28,20 @@ namespace AssistAnt
             return returnImage;
         }
 
-        public string GetTextFromClipboardImage()
+        public string GetTextFromClipboardImage(out int confidence)
         {
             var image = GetClipboardImage(); //new Bitmap("Test.PNG");
-            if (image == null) return null;
-            return GetTextFromImage(image);
+            if (image == null)
+            {
+                confidence = 0;
+                return null;
+            }
+            return GetTextFromImage(image, out confidence);
         }
 
-        public string GetTextFromImage(Image image)
+        public string GetTextFromImage(Image image, out int confidence)
         {
-            var bm = PrepareBitmap(image);
-            return GetText(bm);
+            return GetTextWithPrepare(image, out confidence);
         }
 
         private Bitmap PrepareBitmap(Image source, float resize = 3)
@@ -66,7 +69,117 @@ namespace AssistAnt
             return img;
         }
 
+        private Bitmap AutoPrepareBitmapLite(Image source)
+        {
+            var img = BitmapResize(source, 3, InterpolationMode.HighQualityBicubic);
+            img = BitmapSharpen.Monochrome(img);
+            img = BitmapSharpen.Sharpen(img);
+            return img;
+        }
+
+        private Bitmap AutoPrepareBitmap(Image source)
+        {
+            int resize = 2;
+
+            //Увеличиваем картинку в 2 раза
+            var img0 = new Bitmap((int)(source.Width * resize), (int)(source.Height * resize));
+            using (Graphics g = Graphics.FromImage(img0))
+            {
+                //параметры масштабирования
+                g.CompositingQuality = CompositingQuality.HighSpeed;// HighQuality;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic; // InterpolationMode.HighQualityBicubic;
+                //рисуем с новым размером
+                Rectangle src = new Rectangle(0, 0, source.Width, source.Height);
+                Rectangle dst = new Rectangle(0, 0, img0.Width, img0.Height);
+
+                g.DrawImage(source, dst, src, GraphicsUnit.Pixel);
+            }
+
+            //делаем чернобелой
+            source = BitmapSharpen.Monochrome(img0);
+            var bg = (source as Bitmap).GetPixel(source.Width - 1, source.Height / 2);
+            var border = 7;
+            var rigth = 200;
+
+            //source.Save("C:\\T\\1.png");
+
+            //расширяем в длинну добавляя справа пустоту
+            var img1 = new Bitmap((int)(source.Width + rigth + border), (int)(source.Height + border * 2));
+            using (Graphics g = Graphics.FromImage(img1))
+            {
+                //параметры масштабирования
+                g.CompositingQuality = CompositingQuality.HighSpeed;// HighQuality;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic; // InterpolationMode.HighQualityBicubic;
+                //рисуем с новым размером
+                g.FillRectangle(new SolidBrush(bg), 0, 0, img1.Width, img1.Height);
+
+                Rectangle src = new Rectangle(0, 0, source.Width, source.Height);
+                Rectangle dst = new Rectangle(border, border, source.Width, source.Height);
+                g.DrawImage(source, dst, src, GraphicsUnit.Pixel);
+            }
+
+            //img1.Save("C:\\T\\2.png");
+
+            //увеличиваем резкость
+            source = BitmapSharpen.Sharpen(img1);
+
+            //увеличиваем картинку ещё в 2 раза
+            var img = new Bitmap((int)(source.Width * resize), (int)(source.Height * resize));
+            using (Graphics g = Graphics.FromImage(img))
+            {
+                //параметры масштабирования
+                g.CompositingQuality = CompositingQuality.HighSpeed;// HighQuality;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic; // InterpolationMode.HighQualityBicubic;
+                //рисуем с новым размером
+                Rectangle src = new Rectangle(0, 0, source.Width, source.Height);
+                Rectangle dst = new Rectangle(0, 0, img.Width, img.Height);
+
+                g.DrawImage(source, dst, src, GraphicsUnit.Pixel);
+            }
+
+            //увеличиваем резкость
+            img = BitmapSharpen.Sharpen(img);
+
+            return img;
+        }
+
+        public string GetTextWithPrepare(Image imgsource, out int confidence)
+        {
+            var bm = AutoPrepareBitmap(imgsource);
+            var txt1 = GetText(bm, out var confidence1);
+
+            if (confidence1 < .9)
+            {
+                bm = AutoPrepareBitmapLite(imgsource);
+                var txt2 = GetText(bm, out var confidence2);
+                if (confidence2 > confidence1)
+                {
+                    txt1 = txt2;
+                    confidence1 = confidence2;
+                }
+
+                if (confidence1 < .9)
+                {
+                    bm = PrepareBitmap(imgsource);
+                    var txt3 = GetText(bm, out var confidence3);
+                    if (confidence3 > confidence1)
+                    {
+                        txt1 = txt3;
+                        confidence1 = confidence3;
+                    }
+                }
+            }
+
+            confidence = (int)(confidence1 * 100);
+            return txt1;
+        }
+
         public string GetText(Bitmap imgsource)
+        {
+            return GetText(imgsource, out var _);
+        }
+
+        public string GetText(Bitmap imgsource, out float meanConfidence)
         {
             var ocrtext = string.Empty; //@"./tessdata"  @"c:\W\AssistAnt\bin\Debug\tessdata"  "eng" rus"
             //Environment.SetEnvironmentVariable("TESSDATA_PREFIX", Environment.CurrentDirectory + @"\tessdata");
@@ -77,6 +190,7 @@ namespace AssistAnt
                     using (var page = engine.Process(img))
                     {
                         ocrtext = page.GetText();
+                        meanConfidence = page.GetMeanConfidence();
                     }
                 }
             }

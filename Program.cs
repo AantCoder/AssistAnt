@@ -100,14 +100,14 @@ namespace AssistAnt
 
         private static void ImageEng(object sender, EventArgs e)
         {
-            var txt = Executor.GetTextFromClipboardImage("eng");  
-            ShowText(txt, "Текст в буфере");
+            var txt = Executor.GetTextFromClipboardImage("eng", out int confidence);  
+            ShowText(txt, $"Текст в буфере ({confidence}%)");
         }
 
         private static void ImageRus(object sender, EventArgs e)
         {
-            var txt = Executor.GetTextFromClipboardImage("rus");
-            ShowText(txt, "Текст в буфере");
+            var txt = Executor.GetTextFromClipboardImage("rus", out int confidence);
+            ShowText(txt, $"Текст в буфере ({confidence}%)");
         }
 
         private static void Exit(object sender, EventArgs e)

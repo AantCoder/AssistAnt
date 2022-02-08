@@ -22,7 +22,7 @@ namespace AssistAnt
 
         private void button2_Click(object sender, EventArgs e)
         {
-            textBox1.Text = new Tesseract("eng").GetTextFromClipboardImage();
+            textBox1.Text = new Tesseract("eng").GetTextFromClipboardImage(out _);
             button1_Click_1(null, null);
         }
 

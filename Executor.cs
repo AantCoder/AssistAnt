@@ -13,9 +13,9 @@ namespace AssistAnt
 {
     public class Executor : IDisposable
     {
-        public const string AboutText = @"AssistAnt Версия 1.1 от 2022.02.07 https://github.com/AantCoder/AssistAnt
+        public const string AboutText = @"AssistAnt Версия 1.2 от 2022.02.08 https://github.com/AantCoder/AssistAnt
 
-Программа для распознавания текста и перевода. Есть 3 варианта использования программы:
+Программа для распознавания текста и перевода. Есть 4 варианта использования программы:
 
 * Через контекстное меню в трее можно только распознать текст с изображения в буфере, либо распознать и перевести, либо, если в буфере уже текст, только перевести. Результат выводится в сообщении и сохраняется в буфер обмена.
 
@@ -23,7 +23,9 @@ namespace AssistAnt
 
 * Можно нажать и сразу отпустить клавиши Win+Alt. Экран перейдет в режим выделения области с помощью мыши. Изображение будет скопированно в буфер обмена, а его перевод показан во всплывающей подсказке.
 
-Программа использует компонент распознавания текста Tesseract OCR https://github.com/tesseract-ocr.
+* Можно зажать клавиши Win+Alt, а затем нажать Ctrl. Будет сделана попытка считать текст с компонента в позиции мыши. Работает только с некоторыми стандартными компонентами.
+
+Программа использует компонент распознавания текста Tesseract OCR https://github.com/tesseract-ocr. В некоторых случаях в скобках указан процент точности распознования.
 
 И онлайн переводчик Google Translate Rest API (Free) с помощью GTranslatorAPI https://github.com/franck-gaspoz/GTranslatorAPI.
 
@@ -83,6 +85,18 @@ namespace AssistAnt
             {
                 AnyKeyDown = true;
                 StatusKeyDown = 0;
+                return;
+            }
+
+            //исключение: нажатие Ctrl с уже нажатыми Win и Alt
+            if ((Keys)vkCode == Keys.LControlKey || (Keys)vkCode == Keys.Control)
+            {
+                if (StatusKeyDown == 3 && !AnyKeyDown //и были нажаты обе, и не было нажато других кнопок
+                    && !(wParam == InterceptKeys.WM_KEYDOWN || wParam == InterceptKeys.WM_SYSKEYDOWN))
+                {
+                    StatusKeyDown = 0;
+                    FuncKeyUp(true);
+                }
                 return;
             }
 
@@ -220,12 +234,33 @@ namespace AssistAnt
             }
         }
 
-        private void FuncKeyUp()
+        private void FuncKeyUp(bool altKey = false)
         {
 #if DEBUG
             TestLog($"FuncKeyUp");
 #endif
             //FuncKeyCancel();
+            if (altKey)
+            {
+                FuncKeyCancel();
+
+                var comtxt = GetTextComponentUnderMouse();
+                if (!string.IsNullOrEmpty(comtxt))
+                {
+                    try
+                    {
+                        Clipboard.SetText(comtxt);
+                    }
+                    catch { }
+
+                    var txt = Translator(comtxt, "eng", "rus");
+                    txt = "В буфер: " + Environment.NewLine + comtxt + Environment.NewLine + Environment.NewLine
+                        + "Перевод: " + Environment.NewLine + txt;
+                    ShowToolTip(txt, 0, 0, true);
+                }
+                return;
+            }
+
             var area = GetSelectArea();
 
             if (area.Width <= 1 || area.Height <= 1)
@@ -241,21 +276,7 @@ namespace AssistAnt
                     }
                     catch { }
 
-                    //открываем форму, чтобы привязать к ней высплывающую подсказку
-                    SelectEndPoint = Cursor.Position;
-
-                    SelectForm.Top = SelectEndPoint.Y;
-                    SelectForm.Left = SelectEndPoint.X;
-                    SelectForm.Width = 1;
-                    SelectForm.Height = 1;
-
-                    if (!SelectFormIsShow)
-                    {
-                        SelectFormIsShow = true;
-                        SelectForm.Show();
-                    }
-
-                    ShowToolTip(bm, 0, 0);
+                    ShowToolTip(bm, 0, 0, true);
                 });
                 return;
             }
@@ -263,7 +284,11 @@ namespace AssistAnt
             Bitmap bmp = new Bitmap(area.Width, area.Height);
             using (Graphics g = Graphics.FromImage(bmp))
             {
+                SelectFormIsShow = false;
+                SelectForm.Hide();
                 g.CopyFromScreen(area.X, area.Y, 0, 0, new Size(area.Width, area.Height));
+                SelectFormIsShow = true;
+                SelectForm.Show();
             }
 
             ShowToolTip(bmp, 0, area.Height);
@@ -287,9 +312,31 @@ namespace AssistAnt
             return Math.Max(Math.Abs(p1.X - p2.X), Math.Abs(p1.Y - p2.Y));
         }
 
-        private void ShowToolTip(Bitmap bmp, int offsetToolTipX, int offsetToolTipY)
+        private void ShowToolTip(Bitmap bmp, int offsetToolTipX, int offsetToolTipY, bool showSelectForm = false)
         { 
-            var txt = TranslatorImage(bmp, "eng", "rus");
+            var txt = TranslatorImage(bmp, "eng", "rus", out int confidence);
+            txt = $"Перевод ({confidence}%): " + Environment.NewLine + txt;
+            ShowToolTip(txt, offsetToolTipX, offsetToolTipY, showSelectForm);
+        }
+
+        private void ShowToolTip(string txt, int offsetToolTipX, int offsetToolTipY, bool showSelectForm = false)
+        {
+            if (showSelectForm)
+            {
+                //открываем форму, чтобы привязать к ней высплывающую подсказку
+                SelectEndPoint = Cursor.Position;
+
+                SelectForm.Top = SelectEndPoint.Y;
+                SelectForm.Left = SelectEndPoint.X;
+                SelectForm.Width = 1;
+                SelectForm.Height = 1;
+
+                if (!SelectFormIsShow)
+                {
+                    SelectFormIsShow = true;
+                    SelectForm.Show();
+                }
+            }
 
             SelectOutText = new ToolTip()
             {
@@ -297,7 +344,7 @@ namespace AssistAnt
                 UseAnimation = false,
                 UseFading = false,
             };
-            SelectOutText.Show("Перевод:" + Environment.NewLine + txt, SelectForm, offsetToolTipX, offsetToolTipY);
+            SelectOutText.Show(txt, SelectForm, offsetToolTipX, offsetToolTipY);
 
             new Thread(WaitShowToolTip).Start();
         }
@@ -313,9 +360,9 @@ namespace AssistAnt
             SelectForm.Invoke((Action)FuncKeyCancel);
         }
 
-        public string TranslatorImage(Image image, string sourceLanguage, string targetLanguage)
+        public string TranslatorImage(Image image, string sourceLanguage, string targetLanguage, out int confidence)
         {
-            var source = new Tesseract(sourceLanguage).GetTextFromImage(image);
+            var source = new Tesseract(sourceLanguage).GetTextFromImage(image, out confidence);
             if (source == null) return null;
 
             var tr = new TranslatorText(sourceLanguage, targetLanguage);
@@ -331,21 +378,77 @@ namespace AssistAnt
             }
             else
             {
-                source = new Tesseract(sourceLanguage).GetTextFromClipboardImage();
+                source = new Tesseract(sourceLanguage).GetTextFromClipboardImage(out var _);
             }
             if (source == null) return null;
 
+            return Translator(source, sourceLanguage, targetLanguage);
+        }
+
+        public string Translator(string source, string sourceLanguage, string targetLanguage)
+        {
             var tr = new TranslatorText(sourceLanguage, targetLanguage);
             return tr.Translate(source);
         }
 
-        public string GetTextFromClipboardImage(string language)
+        public string GetTextFromClipboardImage(string language, out int confidence)
         {
-            return new Tesseract(language).GetTextFromClipboardImage();
+            return new Tesseract(language).GetTextFromClipboardImage(out confidence);
         }
 
+        public string GetTextComponentUnderMouse()
+        {
+            try
+            {
+                var hdl = WindowFromPoint(Control.MousePosition);
+                string txt;
+                do
+                {
+                    if (hdl == IntPtr.Zero) return null;
+                    txt = GetControlText(hdl);
+                    if (!string.IsNullOrEmpty(txt)) break;
+                    hdl = GetParent(hdl);
+                } while (true);
+
+                if (txt.Length > 2 * 1024) return null; //только короткий текст до 2кб
+                return txt;
+            }
+            catch { }
+            return null;
+        }
 
         #region util functions
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        public static extern IntPtr GetParent(IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr WindowFromPoint(Point loc);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        public static extern bool SendMessage(IntPtr hWnd, uint Msg, int wParam, StringBuilder lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SendMessage(int hWnd, int Msg, int wparam, int lparam);
+
+        const int WM_GETTEXT = 0x000D;
+        const int WM_GETTEXTLENGTH = 0x000E;
+
+        public string GetControlText(IntPtr hWnd)
+        {
+            // Get the size of the string required to hold the window title (including trailing null.) 
+            Int32 titleSize = SendMessage((int)hWnd, WM_GETTEXTLENGTH, 0, 0).ToInt32();
+
+            // If titleSize is 0, there is no title so return an empty string (or null)
+            if (titleSize == 0)
+                return String.Empty;
+
+            StringBuilder title = new StringBuilder(titleSize + 1);
+
+            SendMessage(hWnd, (int)WM_GETTEXT, title.Capacity, title);
+
+            return title.ToString();
+        }
 
         public class FormLite : Form
         {
