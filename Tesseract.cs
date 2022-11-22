@@ -28,20 +28,21 @@ namespace AssistAnt
             return returnImage;
         }
 
-        public string GetTextFromClipboardImage(out int confidence)
+        public string GetTextFromClipboardImage(out int confidence, out string comment)
         {
             var image = GetClipboardImage(); //new Bitmap("Test.PNG");
             if (image == null)
             {
                 confidence = 0;
+                comment = string.Empty;
                 return null;
             }
-            return GetTextFromImage(image, out confidence);
+            return GetTextFromImage(image, out confidence, out comment);
         }
 
-        public string GetTextFromImage(Image image, out int confidence)
+        public string GetTextFromImage(Image image, out int confidence, out string comment)
         {
-            return GetTextWithPrepare(image, out confidence);
+            return GetTextWithPrepare(image, out confidence, out comment);
         }
 
         private Bitmap PrepareBitmap(Image source, float resize = 3)
@@ -143,13 +144,41 @@ namespace AssistAnt
             return img;
         }
 
-        public string GetTextWithPrepare(Image imgsource, out int confidence)
+        public string GetTextWithPrepare(Image imgsource, out int confidence, out string comment)
         {
+            //очень большие изображение не обрабатываем даже минимально
+            if (imgsource.Width * imgsource.Height >= 1_000_000)
+            {
+                //долго обрабатывается уже несколько секунд, в этом случае убираем долгую предобработку 
+                var bm0 = imgsource as Bitmap ?? PrepareBitmap(imgsource, 1);
+                var txt = GetText(bm0, out var confidence0);
+
+                confidence = (int)(confidence0 * 100);
+                comment = "";
+                return txt;
+            }
+
+            //размер 200_000 обрабатывается уже несколько секунд, в этом случае убираем долгую предобработку
+            //уменьшаем порог с запасом
+            if (imgsource.Width * imgsource.Height > 20_000)
+            {
+                //долго обрабатывается уже несколько секунд, в этом случае убираем долгую предобработку 
+                var bm0 = PrepareBitmap(imgsource);
+                var txt = GetText(bm0, out var confidence0);
+
+                confidence = (int)(confidence0 * 100);
+                comment = "*";
+                return txt;
+            }
+
+            //маленькие изображения дополнительно обрабатываем
             var bm = AutoPrepareBitmap(imgsource);
             var txt1 = GetText(bm, out var confidence1);
+            comment = "*1";
 
             if (confidence1 < .9)
             {
+                comment = "*2";
                 bm = AutoPrepareBitmapLite(imgsource);
                 var txt2 = GetText(bm, out var confidence2);
                 if (confidence2 > confidence1)
@@ -160,6 +189,7 @@ namespace AssistAnt
 
                 if (confidence1 < .9)
                 {
+                    comment = "*3";
                     bm = PrepareBitmap(imgsource);
                     var txt3 = GetText(bm, out var confidence3);
                     if (confidence3 > confidence1)

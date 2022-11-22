@@ -13,7 +13,7 @@ namespace AssistAnt
 {
     public class Executor : IDisposable
     {
-        public const string AboutText = @"AssistAnt Версия 1.2 от 2022.02.08 https://github.com/AantCoder/AssistAnt
+        public const string AboutText = @"AssistAnt Версия 1.3.2 от 2022.11.22 https://github.com/AantCoder/AssistAnt
 
 Программа для распознавания текста и перевода. Есть 4 варианта использования программы:
 
@@ -25,7 +25,8 @@ namespace AssistAnt
 
 * Можно зажать клавиши Win+Alt, а затем нажать Ctrl. Будет сделана попытка считать текст с компонента в позиции мыши. Работает только с некоторыми стандартными компонентами.
 
-Программа использует компонент распознавания текста Tesseract OCR https://github.com/tesseract-ocr. В некоторых случаях в скобках указан процент точности распознования.
+Программа использует компонент распознавания текста Tesseract OCR https://github.com/tesseract-ocr. 
+При распознании текста из картинок указывается % точности и была ли дополнительная обработка изображения. Если изображение среднего размера, то лёгкая обработка указывается *. Если изображение маленького размера, то указывается * и цифра, в которой написано какое количество обработок потребовалось: *1 легкая, *2 *3 дополнительные.
 
 И онлайн переводчик Google Translate Rest API (Free) с помощью GTranslatorAPI https://github.com/franck-gaspoz/GTranslatorAPI.
 
@@ -43,22 +44,27 @@ namespace AssistAnt
         private bool SelectFormIsShow = false;
         private Point SelectStartPoint;
         private Point SelectEndPoint;
+        private IdleTimeControl IdleTime { get; set; }
 
-        public Executor()
+        public Executor(IdleTimeControl idleTime = null)
         {
+            IdleTime = idleTime;
+
             InterceptKeys.Hook += InterceptKeys_Hook;
             InterceptKeys.InitializeComponent();
 
 #if DEBUG
+            IdleTime = null;
             var testForm = new Form1();
             testForm.Show();
             TestLog = s => testForm.textBox1.Text += Environment.NewLine + s;
 #endif
+            if (IdleTime != null) IdleTime.Start();
+
             SelectForm = new FormLite();
             SelectForm.TopMost = true;
             SelectForm.ShowInTaskbar = false;
             
-            SelectForm.FormBorderStyle = FormBorderStyle.None;
             SelectForm.Opacity = .5;
             SelectForm.Paint += SelectForm_Paint;
             SelectForm.Show();
@@ -314,8 +320,8 @@ namespace AssistAnt
 
         private void ShowToolTip(Bitmap bmp, int offsetToolTipX, int offsetToolTipY, bool showSelectForm = false)
         { 
-            var txt = TranslatorImage(bmp, "eng", "rus", out int confidence);
-            txt = $"Перевод ({confidence}%): " + Environment.NewLine + txt;
+            var txt = TranslatorImage(bmp, "eng", "rus", out int confidence, out string comment);
+            txt = $"Перевод ({confidence}%{comment}): " + Environment.NewLine + txt;
             ShowToolTip(txt, offsetToolTipX, offsetToolTipY, showSelectForm);
         }
 
@@ -360,40 +366,68 @@ namespace AssistAnt
             SelectForm.Invoke((Action)FuncKeyCancel);
         }
 
-        public string TranslatorImage(Image image, string sourceLanguage, string targetLanguage, out int confidence)
+        public string TranslatorImage(Image image, string sourceLanguage, string targetLanguage, out int confidence, out string comment)
         {
-            var source = new Tesseract(sourceLanguage).GetTextFromImage(image, out confidence);
-            if (source == null) return null;
+            try
+            {
+                var source = new Tesseract(sourceLanguage).GetTextFromImage(image, out confidence, out comment);
+                if (source == null) return null;
 
-            var tr = new TranslatorText(sourceLanguage, targetLanguage);
-            return tr.Translate(source);
+                var tr = new TranslatorText(sourceLanguage, targetLanguage);
+                return tr.Translate(source);
+            }
+            finally
+            {
+                if (IdleTime != null) IdleTime.Process();
+            }
         }
 
         public string Translator(string sourceLanguage, string targetLanguage)
         {
-            string source;
+            try
+            {
+                string source;
             if (Clipboard.ContainsText())
             {
                 source = Clipboard.GetText();
             }
             else
             {
-                source = new Tesseract(sourceLanguage).GetTextFromClipboardImage(out var _);
+                source = new Tesseract(sourceLanguage).GetTextFromClipboardImage(out _, out _);
             }
             if (source == null) return null;
 
             return Translator(source, sourceLanguage, targetLanguage);
+            }
+            finally
+            {
+                if (IdleTime != null) IdleTime.Process();
+            }
         }
 
         public string Translator(string source, string sourceLanguage, string targetLanguage)
         {
-            var tr = new TranslatorText(sourceLanguage, targetLanguage);
+            try
+            {
+                var tr = new TranslatorText(sourceLanguage, targetLanguage);
             return tr.Translate(source);
+            }
+            finally
+            {
+                if (IdleTime != null) IdleTime.Process();
+            }
         }
 
-        public string GetTextFromClipboardImage(string language, out int confidence)
+        public string GetTextFromClipboardImage(string language, out int confidence, out string comment)
         {
-            return new Tesseract(language).GetTextFromClipboardImage(out confidence);
+            try
+            {
+                return new Tesseract(language).GetTextFromClipboardImage(out confidence, out comment);
+            }
+            finally
+            {
+                if (IdleTime != null) IdleTime.Process();
+            }
         }
 
         public string GetTextComponentUnderMouse()
@@ -467,6 +501,14 @@ namespace AssistAnt
                     return createParams;
                 }
             }
+            protected override bool ScaleChildren => false;
+
+            public FormLite()
+                : base()
+            {
+                this.FormBorderStyle = FormBorderStyle.None;
+                this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            }
         }
 
         private static Control GetNullControl = null;
@@ -475,7 +517,6 @@ namespace AssistAnt
             if (GetNullControl == null)
             {
                 GetNullControl = new FormLite();
-                ((Form)GetNullControl).FormBorderStyle = FormBorderStyle.None;
                 GetNullControl.Show();
                 GetNullControl.Hide();
             }

@@ -1,5 +1,4 @@
-﻿using GTranslatorAPI;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,6 +14,8 @@ namespace AssistAnt
 {
     public partial class Form1 : Form
     {
+        protected override bool ScaleChildren => false;
+
         public Form1()
         {
             InitializeComponent();
@@ -22,7 +23,7 @@ namespace AssistAnt
 
         private void button2_Click(object sender, EventArgs e)
         {
-            textBox1.Text = new Tesseract("eng").GetTextFromClipboardImage(out _);
+            textBox1.Text = new Tesseract("eng").GetTextFromClipboardImage(out _, out _);
             button1_Click_1(null, null);
         }
 

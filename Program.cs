@@ -1,7 +1,9 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -16,6 +18,7 @@ namespace AssistAnt
         private static ContextMenu TrayMenu { get; set; }
 
         private static Executor Executor { get; set; }
+        private static IdleTimeControl IdleTime { get; set; }
 
 
         /// <summary>
@@ -27,7 +30,26 @@ namespace AssistAnt
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            Executor = new Executor();
+            Directory.SetCurrentDirectory(Path.GetDirectoryName(Application.ExecutablePath));
+
+            IdleTime = new IdleTimeControl()
+            {
+                EventIdle = () =>
+                {
+                    try
+                    {
+                        Executor.Dispose();
+                        TrayIcon.Visible = false;
+                        TrayIcon.Dispose();
+                    }
+                    catch
+                    { }
+                    Process.Start(Application.ExecutablePath);
+                    Environment.Exit(0);
+                }
+            };
+
+            Executor = new Executor(IdleTime);
 
             TrayIcon = new NotifyIcon
             {
@@ -100,14 +122,14 @@ namespace AssistAnt
 
         private static void ImageEng(object sender, EventArgs e)
         {
-            var txt = Executor.GetTextFromClipboardImage("eng", out int confidence);  
-            ShowText(txt, $"Текст в буфере ({confidence}%)");
+            var txt = Executor.GetTextFromClipboardImage("eng", out int confidence, out string comment);  
+            ShowText(txt, $"Текст в буфере ({confidence}%{comment})");
         }
 
         private static void ImageRus(object sender, EventArgs e)
         {
-            var txt = Executor.GetTextFromClipboardImage("rus", out int confidence);
-            ShowText(txt, $"Текст в буфере ({confidence}%)");
+            var txt = Executor.GetTextFromClipboardImage("rus", out int confidence, out string comment);
+            ShowText(txt, $"Текст в буфере ({confidence}%{comment})");
         }
 
         private static void Exit(object sender, EventArgs e)

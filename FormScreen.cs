@@ -18,6 +18,7 @@ namespace AssistAnt
         private Point SelectEndPoint;
         private bool MouseDown = false;
         public static bool IsShow => SingleForm != null && SingleForm.Visible;
+        protected override bool ScaleChildren => false;
 
         private Rectangle GetSelectArea()
         {
