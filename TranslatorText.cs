@@ -49,6 +49,8 @@ namespace AssistAnt
                     return cacheVal;
                 }
 
+                text = Preprocessing(text);
+
                 Task<Translation> task = TranslatorAPI.TranslateAsync(
                     SourceLanguage,
                     TargetLanguage,
@@ -56,6 +58,8 @@ namespace AssistAnt
                     );
                 task.Wait();
                 var val = task.Result.TranslatedText;
+
+                val = Postprocessing(val);
 
                 Cache[cacheKey] = val;
 
@@ -66,5 +70,24 @@ namespace AssistAnt
                 return "";
             }
         }
+
+        private const string Separator = "##";
+        private const string Shielding = "(#)";
+        private const string SeparatorSpaсe = " " + Separator + " ";
+
+        /// <summary>
+        /// Убираем переносы строк, и вставляем разделитель, который для переводчика не разбивает предложение на насколько, но который он сохраняет в тексте перевода.
+        /// </summary>
+        private string Preprocessing(string text)
+            => text.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n")
+                .Replace(Separator, Shielding).Replace("\r\n", SeparatorSpaсe)
+                .Replace(SeparatorSpaсe + SeparatorSpaсe + SeparatorSpaсe + SeparatorSpaсe, "\r\n").Replace(SeparatorSpaсe + SeparatorSpaсe + SeparatorSpaсe, "\r\n").Replace(SeparatorSpaсe + SeparatorSpaсe, "\r\n");
+
+        /// <summary>
+        /// Восстанавливаем переносы строк по разделителю
+        /// </summary>
+        private string Postprocessing(string text)
+            => text.Replace(Separator, "\r\n").Replace("\r\n ", "\r\n").Replace(" \r\n", "\r\n").Replace(Shielding, Separator);
+
     }
 }

@@ -13,7 +13,7 @@ namespace AssistAnt
 {
     public class Executor : IDisposable
     {
-        public const string AboutText = @"AssistAnt Версия 1.3.2 от 2022.11.22 https://github.com/AantCoder/AssistAnt
+        public const string AboutText = @"AssistAnt Версия 1.3.3 от 2022.11.27 https://github.com/AantCoder/AssistAnt
 
 Программа для распознавания текста и перевода. Есть 4 варианта использования программы:
 

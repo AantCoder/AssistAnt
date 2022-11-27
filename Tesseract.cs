@@ -225,7 +225,23 @@ namespace AssistAnt
                 }
             }
 
-            return ocrtext.Replace("\n", "\r\n").Replace("\r\r\n", "\r\n");
+            //нормализуем конец строки
+            ocrtext = ocrtext.Replace("\n", "\r\n").Replace("\r\r\n", "\r\n");
+
+            //строка обработки для комиксов и подобного: убираем символы чаще всего порожденные шумами с краёв:
+            var ocrtextLs = ocrtext.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+            Func<string, string> rep = (m) => m
+                    .Replace("#@@#_", "#@@#").Replace("_#@@#", "#@@#")
+                    .Replace("#@@#\\", "#@@#").Replace("\\#@@#", "#@@#")
+                    .Replace("#@@#/", "#@@#").Replace("/#@@#", "#@@#")
+                    .Replace("#@@# ", "#@@#").Replace(" #@@#", "#@@#")
+                    .Replace("#@@#.", "#@@#")
+                    .Replace("#@@#,", "#@@#");
+            for (int i = 0; i < ocrtextLs.Length; i++) ocrtextLs[i] = rep(rep(rep(rep("#@@#" + ocrtextLs[i].Trim() + "#@@#")))).Replace("#@@#", "");
+
+            ocrtext = string.Join("\r\n", ocrtextLs);
+
+            return ocrtext;
         }
 
     }
