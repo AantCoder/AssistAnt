@@ -1,9 +1,14 @@
-﻿using System;
+﻿using GTranslatorAPI;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using Tesseract;
 
@@ -209,11 +214,11 @@ namespace AssistAnt
             return GetText(imgsource, out var _);
         }
 
-        public string GetText(Bitmap imgsource, out float meanConfidence)
+        public static string GetTextEngine(Bitmap imgsource, out float meanConfidence, string language)
         {
             var ocrtext = string.Empty; //@"./tessdata"  @"c:\W\AssistAnt\bin\Debug\tessdata"  "eng" rus"
             //Environment.SetEnvironmentVariable("TESSDATA_PREFIX", Environment.CurrentDirectory + @"\tessdata");
-            using (var engine = new TesseractEngine(@"./tessdata", Language, EngineMode.Default))
+            using (var engine = new TesseractEngine(@"./tessdata", language, EngineMode.Default))
             {
                 using (var img = PixConverter.ToPix(imgsource))
                 {
@@ -243,6 +248,79 @@ namespace AssistAnt
 
             return ocrtext;
         }
+
+        //public string GetText(Bitmap imgsource, out float meanConfidence)
+        //{
+        //    return GetTextEngine(imgsource, out meanConfidence, Language);
+        //}
+
+        private static ExecutionMap Proxy = null;
+        private static Process ProxyProcess = null;
+        private static void CheckProxy()
+        {
+            if (Proxy == null)
+            {
+#if DEBUG
+                var code = 1;
+#else
+                var code = new Random().Next(int.MaxValue);
+#endif
+                Proxy = new ExecutionMap(code);
+#if !DEBUG
+                ProxyProcess = Process.Start(new ProcessStartInfo(Environment.GetCommandLineArgs()[0]
+                    , "worker" + " " + code.ToString())
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                });
+                PetProcess.AddProcessToControlExit(ProxyProcess);
+#endif
+                //Thread.Sleep(2000);
+            }
+        }
+        public static void ProxyRestart()
+        {
+            if (ProxyProcess != null) PetProcess.KillTree(ProxyProcess);
+            ProxyProcess = null;
+            Proxy = null;
+        }
+
+        [Serializable]
+        public class ProxyRequest
+        {
+            public Bitmap Imgsource;
+            public string Language;
+        }
+        [Serializable]
+        public class ProxyResponse
+        {
+            public string Text;
+            public float MeanConfidence;
+        }
+        public string GetText(Bitmap imgsource, out float meanConfidence)
+        {
+            CheckProxy();
+            try
+            {
+                var result = Proxy.Client("TesseractEngine", new ProxyRequest()
+                    {
+                        Imgsource = imgsource,
+                        Language = Language,
+                    })
+                    .GetAwaiter().GetResult()
+                    as ProxyResponse;
+
+                meanConfidence = result.MeanConfidence;
+                
+                return result.Text;
+            }
+            catch 
+            {
+                meanConfidence = 0;
+                return "";
+            }
+        }
+
 
     }
 }

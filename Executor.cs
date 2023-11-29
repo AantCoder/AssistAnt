@@ -13,7 +13,7 @@ namespace AssistAnt
 {
     public class Executor : IDisposable
     {
-        public const string AboutText = @"AssistAnt Версия 1.3.3 от 2022.11.27 https://github.com/AantCoder/AssistAnt
+        public const string AboutText = @"AssistAnt Версия 1.4.1 от 2023.11.29 https://github.com/AantCoder/AssistAnt
 
 Программа для распознавания текста и перевода. Есть 4 варианта использования программы:
 
@@ -30,7 +30,7 @@ namespace AssistAnt
 
 И онлайн переводчик Google Translate Rest API (Free) с помощью GTranslatorAPI https://github.com/franck-gaspoz/GTranslatorAPI.
 
-Автор Иванов Василий Сергеевич, 2022г. emAnt@mail.ru
+Автор Иванов Василий Сергеевич, 2022-2023г. emAnt@mail.ru
 Распространяется под лицензией MIT
 ";
 
@@ -49,6 +49,10 @@ namespace AssistAnt
         public Executor(IdleTimeControl idleTime = null)
         {
             IdleTime = idleTime;
+            IdleTime.EventIdle = () =>
+            {
+                Tesseract.ProxyRestart();
+            };
 
             InterceptKeys.Hook += InterceptKeys_Hook;
             InterceptKeys.InitializeComponent();

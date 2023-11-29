@@ -4,8 +4,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AssistAnt", "AssistAnt.csproj", "{338722EE-1073-463E-9A91-A1F8D26E2F9B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6} = {AE0F0DEF-10A4-4EFC-991B-092F73582ED6}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GTranslatorAPIF", "GTranslatorAPIF\GTranslatorAPIF.csproj", "{D3D39C24-A7B2-4535-8054-A8DE81FD5232}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AssistAntControlExit", "AssistAntControlExit\AssistAntControlExit.csproj", "{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +36,14 @@ Global
 		{D3D39C24-A7B2-4535-8054-A8DE81FD5232}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D3D39C24-A7B2-4535-8054-A8DE81FD5232}.Release|x64.ActiveCfg = Release|x64
 		{D3D39C24-A7B2-4535-8054-A8DE81FD5232}.Release|x64.Build.0 = Release|x64
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Debug|x64.Build.0 = Debug|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Release|x64.ActiveCfg = Release|Any CPU
+		{AE0F0DEF-10A4-4EFC-991B-092F73582ED6}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

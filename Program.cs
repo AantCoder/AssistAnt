@@ -25,36 +25,43 @@ namespace AssistAnt
         /// Главная точка входа для приложения.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            if (args != null && args.Length > 1)
+            {
+                new ProgramModeWorker().Main(args);
+                return;
+            }
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Application.ExecutablePath));
 
-            IdleTime = new IdleTimeControl()
-            {
-                EventIdle = () =>
-                {
-                    try
-                    {
-                        Executor.Dispose();
-                        TrayIcon.Visible = false;
-                        TrayIcon.Dispose();
-                    }
-                    catch
-                    { }
-                    Process.Start(Application.ExecutablePath);
-                    Environment.Exit(0);
-                }
-            };
+            IdleTime = new IdleTimeControl();
+            //Вариант с перезагрзкой:
+            //{
+            //    EventIdle = () =>
+            //    {
+            //        try
+            //        {
+            //            Executor.Dispose();
+            //            TrayIcon.Visible = false;
+            //            TrayIcon.Dispose();
+            //        }
+            //        catch
+            //        { }
+            //        Process.Start(Application.ExecutablePath);
+            //        Environment.Exit(0);
+            //    }
+            //};
 
             Executor = new Executor(IdleTime);
 
             TrayIcon = new NotifyIcon
             {
                 Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath), //SystemIcons.Asterisk;
-                Text = "AssistAnt - Распознование текста на скриншотах"
+                Text = "AssistAnt"
             };
             TrayMenu = new ContextMenu(new MenuItem[]
                 {
@@ -64,6 +71,8 @@ namespace AssistAnt
             TrayIcon.ContextMenu = TrayMenu;
             TrayIcon.Visible = true;
             TrayIcon.DoubleClick += AboutTheProgram;
+
+            if (PetForm == null) PetForm = new PetProcessForm();
 
             Application.Run();
         }
@@ -84,6 +93,7 @@ namespace AssistAnt
                 TrayMenu.MenuItems.Add(new MenuItem("Распознать текст rus", ImageRus));
             }
             TrayMenu.MenuItems.Add(new MenuItem("-"));
+            TrayMenu.MenuItems.Add(new MenuItem("Консоли", WindowsConsoles));
             TrayMenu.MenuItems.Add(new MenuItem("Добавть в автозагрузку", WindowsAutorun));
             TrayMenu.MenuItems.Add(new MenuItem("О программе", AboutTheProgram));
             TrayMenu.MenuItems.Add(new MenuItem("Выход", Exit));
@@ -92,6 +102,13 @@ namespace AssistAnt
         private static void AboutTheProgram(object sender, EventArgs e)
         {
             ShowText(Executor.AboutText, "О программе", Executor.AboutURL);
+        }
+
+
+        private static PetProcessForm PetForm = null;
+        private static void WindowsConsoles(object sender, EventArgs e)
+        {
+            PetProcessForm.ShowForm(ref PetForm);
         }
 
         private static void WindowsAutorun(object sender, EventArgs e)
@@ -134,6 +151,7 @@ namespace AssistAnt
 
         private static void Exit(object sender, EventArgs e)
         {
+            if (PetForm != null) PetForm.Dispose();
             TrayIcon.Visible = false;
             Executor.Dispose();
             Application.Exit();
