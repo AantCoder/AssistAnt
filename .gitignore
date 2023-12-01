@@ -3,3 +3,6 @@
 /packages
 /GTranslatorAPIF/obj
 /GTranslatorAPIF/bin
+/.vs
+/AssistAntControlExit/obj
+/AssistAntControlExit/bin

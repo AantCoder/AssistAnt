@@ -128,10 +128,13 @@ namespace AssistAnt
             StatusTest = "Closed";
             Status = -2;
             if (OnUpdate != null) OnUpdate();
-            Thread.Sleep(400);
-            StatusTest = "Closed";
-            Status = -2;
-            if (OnUpdate != null) OnUpdate();
+            var task = Task.Delay(400)
+                .ContinueWith(t =>
+                {
+                    StatusTest = "Closed";
+                    Status = -2;
+                    if (OnUpdate != null) OnUpdate();
+                });
         }
 
         private void SetText(string text)

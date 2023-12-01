@@ -123,6 +123,7 @@ namespace AssistAnt
                         if (view.Data.Status != -2)
                             view.Data.Close();
                     }
+                    Application.DoEvents();
                 }
             }
 

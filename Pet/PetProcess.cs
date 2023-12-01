@@ -91,18 +91,21 @@ namespace AssistAnt
 
         private void Process_Exited(object sender, EventArgs e)
         {
+            if (Pet == null) return;
             if (Exited != null) Exited();
         }
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Data)) return;
+            if (Pet == null) return;
             if (Readln != null) Readln(e.Data);
         }
 
         private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Data)) return;
+            if (Pet == null) return;
             if (Readln != null) Readln(e.Data);
         }
 
@@ -110,17 +113,18 @@ namespace AssistAnt
         {
             if (Pet != null)
             {
-                try
-                {
-                    KillTree(Pet);
-                }
-                catch { }
-                try
-                {
-                    Pet.Kill();
-                }
-                catch { }
+                var pet = Pet;
                 Pet = null;
+                try
+                {
+                    KillTree(pet);
+                }
+                catch { }
+                try
+                {
+                    pet.Kill();
+                }
+                catch { }
             }
         }
 
