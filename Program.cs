@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using AssistAnt.ActualCopy;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -72,6 +73,7 @@ namespace AssistAnt
             TrayIcon.Visible = true;
             TrayIcon.DoubleClick += AboutTheProgram;
 
+            if (ActualCopy == null) ActualCopy = new ActualCopyService();
             if (PetForm == null) PetForm = new PetProcessForm();
 
             Application.Run();
@@ -93,6 +95,7 @@ namespace AssistAnt
                 TrayMenu.MenuItems.Add(new MenuItem("Распознать текст rus", ImageRus));
             }
             TrayMenu.MenuItems.Add(new MenuItem("-"));
+            TrayMenu.MenuItems.Add(new MenuItem("Синхронизация", WindowsActualCopy));
             TrayMenu.MenuItems.Add(new MenuItem("Консоли", WindowsConsoles));
             TrayMenu.MenuItems.Add(new MenuItem("Добавть в автозагрузку", WindowsAutorun));
             TrayMenu.MenuItems.Add(new MenuItem("О программе", AboutTheProgram));
@@ -104,6 +107,12 @@ namespace AssistAnt
             ShowText(Executor.AboutText, "О программе", Executor.AboutURL);
         }
 
+        private static ActualCopyService ActualCopy = null;
+        private static void WindowsActualCopy(object sender, EventArgs e)
+        {
+            var form = new ActualCopyForm(ActualCopy);
+            form.Show();
+        }
 
         private static PetProcessForm PetForm = null;
         private static void WindowsConsoles(object sender, EventArgs e)
